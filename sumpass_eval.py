@@ -1,3 +1,8 @@
+"""
+TODO: Some dataset is not in the correct format of klon8 such as with starting with "<klon8> ครานั้นสร้อยทองผ่อง" in mock_data.json
+TODO: Improve the speed of evaluation code
+"""
+
 import json
 import pandas as pd
 from tqdm import tqdm
@@ -142,8 +147,8 @@ if __name__ == "__main__":
             cur_row.extend(fail_count+result[0]+result[1])
             list_df.append(cur_row)
 
-    columns = ["input", "output", "WakNumberFail", "WordFail", "LenghtFail", "สดับ1-รับ1", "รับ1-รอง1", "รับ1-ส่ง1", "รอง1-ส่ง1", "สดับ2-รับ2", "รับ2-รอง2", "รับ2-ส่ง2", "รอง2-ส่ง2", "ส่ง1-รับ2","ซ้ำสดับ1-รับ1", "ซ้ำรับ1-รอง1", "ซ้ำรับ1-ส่ง1", "ซ้ำรอง1-ส่ง1", "ซ้ำสดับ2-รับ2", "ซ้ำรับ2-รอง2", "ซ้ำรับ2-ส่ง2", "ซ้ำรอง2-ส่ง2", "ซ้ำส่ง1-รับ2"]
-    df = pd.DataFrame(list_df, columns = columns, dtype = int)
+    columns = ["input", "output", "WakNumberFail", "WordFail", "LengthFail", "สดับ1-รับ1", "รับ1-รอง1", "รับ1-ส่ง1", "รอง1-ส่ง1", "สดับ2-รับ2", "รับ2-รอง2", "รับ2-ส่ง2", "รอง2-ส่ง2", "ส่ง1-รับ2","ซ้ำสดับ1-รับ1", "ซ้ำรับ1-รอง1", "ซ้ำรับ1-ส่ง1", "ซ้ำรอง1-ส่ง1", "ซ้ำสดับ2-รับ2", "ซ้ำรับ2-รอง2", "ซ้ำรับ2-ส่ง2", "ซ้ำรอง2-ส่ง2", "ซ้ำส่ง1-รับ2"]
+    df = pd.DataFrame(list_df, columns = columns)
     
     save_path = args.eval_save_path
 

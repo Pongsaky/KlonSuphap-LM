@@ -1,5 +1,6 @@
 from tltk import nlp
 import re
+from .file_utils import get_data_from_json
 
 pattern_1 = re.compile(r'\'|~|\|')
 pattern_2 = re.compile(r'~|\|')
@@ -16,7 +17,10 @@ long_short_vow = [['aa', 'a'],
                   ['@@', '@'],
                   ['oo', 'o']]
 
-special_tokens = ["<s1>", "</s1>", "<es1>", "</es1>", "<s2>", "</s2>", "<es2>", "</es2>", "<s3>", "</s3>"]
+# <s1>, </s1>, ... are special tokens for old project
+# special_tokens = ["<s1>", "</s1>", "<es1>", "</es1>", "<s2>", "</s2>", "<es2>", "</es2>", "<s3>", "</s3>"]
+# new special tokens for new project
+special_tokens = get_data_from_json("dataset/phonetic_token.json")
 alphab = ['b', 'c', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'p', 'q', 'r', 's', 't', 'v', 'w', 'y', 'z', '?', 'N']
 
 def VowelMattra(txt):
