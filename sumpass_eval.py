@@ -6,6 +6,7 @@ TODO: Improve the speed of evaluation code
 import json
 import pandas as pd
 from tqdm import tqdm
+import multiprocessing
 
 from utils.word_check import replace_long_short, format_str_waks, format_waks_syl
 
@@ -110,45 +111,47 @@ def get_score(txt):
 
     return [score, repli]
 
-test_path = args.test_path
-print(f"Loading test result from {test_path}")
-with open(test_path) as f:
-    data = json.load(f)
+def process_klon(klon):
+    """Processes a single klon item to calculate scores."""
+    cur_row = [klon["input"], klon["output"]]
+    fail_count = [0, 0, 0]
+    score = [0] * 9
+    repli = [0] * 9
+
+    result = get_score(klon["output"])
+
+    if result == "WakNumberFail":
+        fail_count[0] += 1
+        cur_row.extend(fail_count + score + repli)
+    elif result == "WordFail":
+        fail_count[1] += 1
+        cur_row.extend(fail_count + score + repli)
+    elif result == "LengthFail":
+        fail_count[2] += 1
+        cur_row.extend(fail_count + score + repli)
+    else:
+        cur_row.extend(fail_count + result[0] + result[1])
+    
+    return cur_row
 
 if __name__ == "__main__":
-    list_df = []
-    for klon in tqdm(data):
-        cur_row = [klon["input"],klon["output"]]
-        fail_count = [0,0,0]
-        score = [0,0,0,0,0,0,0,0,0]
-        repli = [0,0,0,0,0,0,0,0,0]
+    # Determine the number of processes to use (optional, defaults to cpu_count)
+    num_processes = multiprocessing.cpu_count()
+    
+    test_path = args.test_path
+    print(f"Loading test result from {test_path}")
+    with open(test_path) as f:
+        data = json.load(f)
+    
+    print(f"Processing {len(data)} items using multiprocessing...")
+    with multiprocessing.Pool(processes=num_processes) as pool:
+        # Use imap and tqdm for progress bar
+        list_df = list(tqdm(pool.imap(process_klon, data), total=len(data)))
 
-        result = get_score(klon["output"])  
-
-        if result == "WakNumberFail":
-            fail_count[0] += 1
-            cur_row.extend(fail_count+score+repli)
-            list_df.append(cur_row)
-            continue
-
-        elif result == "WordFail":
-            fail_count[1] += 1
-            cur_row.extend(fail_count+score+repli)
-            list_df.append(cur_row)
-            continue
-            
-        elif result == "LengthFail":
-            fail_count[2] += 1
-            cur_row.extend(fail_count+score+repli)
-            list_df.append(cur_row)
-            continue
-
-        else:
-            cur_row.extend(fail_count+result[0]+result[1])
-            list_df.append(cur_row)
+    print("Finished processing.")
 
     columns = ["input", "output", "WakNumberFail", "WordFail", "LengthFail", "สดับ1-รับ1", "รับ1-รอง1", "รับ1-ส่ง1", "รอง1-ส่ง1", "สดับ2-รับ2", "รับ2-รอง2", "รับ2-ส่ง2", "รอง2-ส่ง2", "ส่ง1-รับ2","ซ้ำสดับ1-รับ1", "ซ้ำรับ1-รอง1", "ซ้ำรับ1-ส่ง1", "ซ้ำรอง1-ส่ง1", "ซ้ำสดับ2-รับ2", "ซ้ำรับ2-รอง2", "ซ้ำรับ2-ส่ง2", "ซ้ำรอง2-ส่ง2", "ซ้ำส่ง1-รับ2"]
-    df = pd.DataFrame(list_df, columns = columns)
+    df = pd.DataFrame(list_df, columns=columns)
     
     save_path = args.eval_save_path
 

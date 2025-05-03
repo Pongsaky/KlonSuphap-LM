@@ -1,5 +1,6 @@
 from tltk import nlp
 import re
+import functools
 from .file_utils import get_data_from_json
 
 pattern_1 = re.compile(r'\'|~|\|')
@@ -64,11 +65,13 @@ def by_syllable(inp):
 
     return text_rom_2, text_th_2, fail
 
+@functools.lru_cache(maxsize=None)
 def Get_Vow_and_Syl(txt):
     rom_syllable, th_syllable, fail = by_syllable(txt)
     VowMatList = [VowelMattra(a) for a in rom_syllable]
     return VowMatList, th_syllable, fail
 
+@functools.lru_cache(maxsize=None)
 def replace_long_short(str):
     for long_short in long_short_vow:
         str = str.replace(long_short[0],long_short[1])
