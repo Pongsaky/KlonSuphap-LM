@@ -3,7 +3,8 @@ import gc
 from collections import defaultdict
 import re
 
-def extract_phonetic_combinations(training_data, tokenizer):
+def extract_phonetic_combinations(training_data, tokenizer, model_type="gemma|llama"):
+    assert(model_type in ["gemma", "llama"])
     # Define regex pattern to match <r>[X][Y]text</r> patterns
     pattern = r'<r>(.+?)</r>'
 
@@ -30,8 +31,10 @@ def extract_phonetic_combinations(training_data, tokenizer):
     new_tag_dict = defaultdict(set)
     for key, value in tag_dict.items():
         for word in value:
-            tokenized_words = tokenizer.tokenizer.encode(
-                word, add_special_tokens=False)
+            if model_type == "gemma":
+                tokenized_words = tokenizer.tokenizer.encode(word, add_special_tokens=False)
+            else:
+                tokenized_words = tokenizer.encode(word, add_special_tokens=False)
             # tokenized_words = tokenizer.encode(word, add_special_tokens=False)
             if "<r>" in tokenized_words:
                 print(f"Value: {value}")
@@ -64,13 +67,12 @@ def mean_surround_new_tag_token(model, tag_dict):
     return tag_embedding_dict, tag_lm_head_dict
 
 
-def gemma_add_new_tokens(
+def add_new_tokens(
     model,
     tokenizer,
     tag_dict,
     new_tokens=[],
-    method="mean",
-    interpolation=0.5,
+    model_type="gemma|llama"
 ):
     """
     Smartly resizes the tokenizer and adds new tokens to the model.
@@ -79,12 +81,16 @@ def gemma_add_new_tokens(
     # All Unsloth Zoo code licensed under LGPLv3
     assert (isinstance(new_tokens, (list, tuple)))
     assert (len(new_tokens) > 0)
-    assert (method == "mean" or method == "interpolation")
-    assert (interpolation >= 0 and interpolation <= 1)
+    assert (len(tag_dict) > 0)
+    assert (isinstance(tag_dict, dict))
+    assert(model_type in ["gemma", "llama"])
 
     # Check if tokens already exist
-    overlapping_tokens = set(new_tokens) & set(
-        tokenizer.tokenizer.vocab.keys())
+    if model_type == "gemma":
+        overlapping_tokens = set(new_tokens) & set(tokenizer.tokenizer.vocab.keys())
+    else:
+        overlapping_tokens = set(new_tokens) & set(tokenizer.vocab.keys())
+        
     if len(overlapping_tokens) != 0:
         print(
             f"Unsloth: You're adding new_tokens = {new_tokens}\n"
@@ -103,19 +109,26 @@ def gemma_add_new_tokens(
     old_output_embedding = model.get_output_embeddings().weight
     old_input_length = old_input_embedding.shape[0]
     old_output_length = old_output_embedding.shape[0]
-    old_config_size = model.config.text_config.vocab_size
+    if model_type == "gemma":
+        old_config_size = model.config.text_config.vocab_size
+    else:
+        old_config_size = model.config.vocab_size
 
     # Check for tied weights as well
     is_tied = (old_input_embedding.data_ptr() == old_output_embedding.data_ptr()) \
         or (model.config.tie_word_embeddings)
 
     # Add tokens!
-    old_length = len(tokenizer.tokenizer)
-    tokenizer.tokenizer.add_tokens(new_tokens)
+    if model_type == "gemma":
+        old_length = len(tokenizer.tokenizer)
+        tokenizer.tokenizer.add_tokens(new_tokens)
+        model.resize_token_embeddings(len(tokenizer.tokenizer))
+    else:
+        old_length = len(tokenizer)
+        tokenizer.add_tokens(new_tokens)
+        model.resize_token_embeddings(len(tokenizer))
     # Also resizes lm_head as well!
-    model.resize_token_embeddings(len(tokenizer.tokenizer))
 
-    # If we use interpolation, we interpolate between the mean embeddings and
     # the Word2Vec sum of the other vectors
     embedding_matrix = model.get_input_embeddings().weight
     lm_head_matrix = model.get_output_embeddings().weight
@@ -129,15 +142,22 @@ def gemma_add_new_tokens(
         raise RuntimeError(
             "Unsloth: LM Head matrix size did not get resized properly. Please file a bug report!"
         )
-    if model.config.text_config.vocab_size > (old_config_size + len(new_tokens)):
-        raise RuntimeError(
-            "Unsloth: Model's config vocab_size did not get resized properly. Please file a bug report!"
-        )
-    pass
+    if model_type == "gemma":
+        if model.config.text_config.vocab_size > (old_config_size + len(new_tokens)):
+            raise RuntimeError(
+                "Unsloth: Model's config vocab_size did not get resized properly. Please file a bug report!"
+            )
+    else:
+        if model.config.vocab_size > (old_config_size + len(new_tokens)):
+            raise RuntimeError(
+                "Unsloth: Model's config vocab_size did not get resized properly. Please file a bug report!"
+            )
 
     key_list = list(tag_dict.keys())
-    key_ids_list = [tokenizer.tokenizer.encode(word, add_special_tokens=False)[
-        0] for word in key_list]
+    if model_type == "gemma":
+        key_ids_list = [tokenizer.tokenizer.encode(word, add_special_tokens=False)[0] for word in key_list]
+    else:
+        key_ids_list = [tokenizer.encode(word, add_special_tokens=False)[0] for word in key_list]
     with torch.no_grad():
         for key, ids in zip(key_list, key_ids_list):
             tag_embedding = tag_embedding_dict[key]
@@ -156,16 +176,14 @@ def gemma_add_new_tokens(
     
     # Fix up all vocab sizes
     current_model = model
-    while hasattr(current_model, "model") and hasattr(current_model, "config"):
-        if hasattr(current_model.config.text_config, "vocab_size"):
-            current_model.config.text_config.update(
-                {"vocab_size": len(tokenizer.tokenizer)})
-        current_model = current_model.model
     if hasattr(current_model, "model") and hasattr(current_model, "config"):
-        if hasattr(current_model.config.text_config, "vocab_size"):
-            current_model.config.text_config.update(
-                {"vocab_size": len(tokenizer.tokenizer)})
-    pass
+        if model_type == "gemma":
+            if hasattr(current_model.config.text_config, "vocab_size"):
+                current_model.config.text_config.update({"vocab_size": len(tokenizer.tokenizer)})
+        else:
+            if hasattr(current_model.config, "vocab_size"):
+                current_model.config.update({"vocab_size": len(tokenizer)})
+        current_model = current_model.model
 
     # Must tie lm_head and embed_tokens if they are tied!
     # Otherwise error will occur on saving models ie use save_model

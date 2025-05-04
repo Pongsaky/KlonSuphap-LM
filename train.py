@@ -6,11 +6,11 @@ import numpy as np
 import transformers
 import trl
 import datasets
-import peft
 import gc
 import json
+import argparse
 
-from utils.llm_utils import gemma_add_new_tokens, extract_phonetic_combinations
+from utils import llm_utils
 
 # Set environment variable for Unsloth
 os.environ["UNSLOTH_IS_PRESENT"] = "1"
@@ -98,40 +98,80 @@ class TextOutputCallback(transformers.TrainerCallback):
                 response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
                 print(f"Output : {response}")
             elif self.data_type == "instruct":
-                response = generate_response(self.model, self.tokenizer, sample_text)
+                response = generate_response(self.model, self.tokenizer, sample_text[:-1])
                 print(f"Output : {response}")
 
         return control
 
 
 def add_new_tokens(model, tokenizer, new_tokens, model_type="llama", tag_dict=None):
-    if model_type == "llama":
-        unsloth.add_new_tokens(model, tokenizer, new_tokens)
-    elif model_type == "gemma":
-        if tag_dict is None:
-            raise ValueError("tag_dict must be provided for Gemma model.")
-        gemma_add_new_tokens(model, tokenizer, tag_dict, new_tokens)
-    else:
-        raise ValueError(f"Unsupported model type: {model_type}")
+    if model_type not in ["gemma", "llama"]:
+        raise ValueError("Unsupported model type. Supported types are 'gemma' and 'llama'.")
 
+    if tag_dict is None:
+        raise ValueError("tag_dict cannot be None.")
+
+    llm_utils.add_new_tokens(model=model, tokenizer=tokenizer, new_tokens=new_tokens, tag_dict=tag_dict, model_type=model_type)
     return model, tokenizer
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Train a language model based on configuration.")
+    parser.add_argument("--no-confirm", action="store_true", help="Skip user confirmation before training.")
+    args = parser.parse_args()
+
     with open("config.yaml", "r") as f:
         config = yaml.safe_load(f)
 
     for run_config in config["training_runs"]:
-        print(f"Starting training run: {run_config['name']}")
-
+        print("-" * 50)
+        print(f"Configuration Summary for Run: {run_config['name']}")
+        print("-" * 50)
+        
         # Set up WandB
         if run_config["training"].get("report_to") == "wandb":
             wandb_api_key = run_config["wandb"]["api_key_env_var"]
             if wandb_api_key:
                 import wandb
                 wandb.login(key=wandb_api_key)
-                wandb.init(project=run_config["wandb"]["project"], name=run_config["name"])
+                wandb.init(project=run_config["wandb"]
+                           ["project"], name=run_config["name"])
             else:
-                print(f"Warning: WandB API key environment variable '{run_config['wandb']['api_key_env_var']}' not set. Skipping WandB logging.")
+                print(
+                    f"Warning: WandB API key environment variable '{run_config['wandb']['api_key_env_var']}' not set. Skipping WandB logging.")
+
+        # Model Information
+        print(f"  Model Name: {run_config['model']['name']}")
+        print(f"  Model Type: {run_config['model']['type']}")
+        print(f"  Quantization: {run_config['model']['quantization']}")
+
+        # LoRA Information
+        lora_enabled = run_config["lora"]["enabled"]
+        print(f"  LoRA Enabled: {lora_enabled}")
+        if lora_enabled:
+            print(f"    LoRA r: {run_config['lora']['r']}")
+            print(f"    LoRA alpha: {run_config['lora']['alpha']}")
+            print(f"    LoRA target_modules: {run_config['lora']['target_modules']}")
+            print(f"    LoRA train_embeddings: {run_config['lora'].get('train_embeddings', False)}")
+
+        # Data Information
+        data_type = run_config["data"]["type"]
+        print(f"  Data Type: {data_type}")
+        if data_type == "standard":
+            print(f"    Train File: {run_config['data']['train_file']}")
+            print(f"    Valid File: {run_config['data']['valid_file']}")
+            print(f"    Test Inputs File: {run_config['data']['test_inputs_file']}")
+        elif data_type == "instruct":
+            print(f"    Train Files: {run_config['data']['train_files']}")
+            print(f"    Valid Files: {run_config['data']['valid_files']}")
+            print(f"    Test Inputs File: {run_config['data']['test_inputs_file']}")
+        print(f"    Phonetic Tokens File: {run_config['data']['phonetic_token_file']}")
+
+        # Training Hyperparameters
+        print("  Training Hyperparameters:")
+        print(f"    Epochs: {run_config['training']['epochs']}")
+        print(f"    Batch Size: {run_config['training']['batch_size']}")
+        print(f"    Accumulation Steps: {run_config['training']['accumulation_steps']}")
+        print(f"    Learning Rate: {run_config['training']['learning_rate']}")
 
         # Load phonetic tokens
         phonetic_tokens = get_data_from_json(run_config["data"]["phonetic_token_file"])
@@ -145,16 +185,24 @@ if __name__ == "__main__":
             valid_dataset = datasets.Dataset.from_dict({"text": valid_data})
             test_inputs = get_data_from_json(run_config["data"]["test_inputs_file"])
         elif data_type == "instruct":
-            train_files = run_config["data"]["train_files"]
-            valid_files = run_config["data"]["valid_files"]
-            train_datasets = [datasets.Dataset.from_json(f) for f in train_files]
-            valid_datasets = [datasets.Dataset.from_json(f) for f in valid_files]
+            # Training file used for generating new tokens for instruct case
+            train_data = get_data_from_json(run_config["data"]["train_file"])
+            
+            # Load instruct datasets
+            instruct_train_files = run_config["data"]["instruct_train_files"]
+            instruct_valid_files = run_config["data"]["instruct_valid_files"]
+            train_datasets = [datasets.Dataset.from_json(f) for f in instruct_train_files]
+            valid_datasets = [datasets.Dataset.from_json(f) for f in instruct_valid_files]
             train_dataset = datasets.concatenate_datasets(train_datasets)
             valid_dataset = datasets.concatenate_datasets(valid_datasets)
-            test_inputs_raw = get_data_from_json(run_config["data"]["test_inputs_file"])
-            # Assuming test_inputs_file for instruct is a list of conversation structures
-            # We need to format them into prompts for the callback
-            test_inputs = [add_conversation({"messages": item})["text"] for item in test_inputs_raw]
+            # test_inputs_raw = get_data_from_json(run_config["data"]["test_inputs_file"])
+            # # Assuming test_inputs_file for instruct is a list of conversation structures
+            # # We need to format them into prompts for the callback
+            # test_inputs = [add_conversation({"messages": item})["text"] for item in test_inputs_raw]
+
+            # Prepare instruct datasets
+            train_dataset = train_datasets.map(formatting_conversation, batched=True)
+            valid_dataset = valid_datasets.map(formatting_conversation, batched=True)
 
         # Shuffle datasets
         train_dataset = train_dataset.shuffle(seed=run_config["training"]["seed"])
@@ -185,7 +233,8 @@ if __name__ == "__main__":
 
         if run_config["data"]["add_new_tokens"]:
             # Add new tokens
-            model, tokenizer = add_new_tokens(model, tokenizer, phonetic_tokens, model_type=model_type)
+            tag_dict = llm_utils.extract_phonetic_combinations(train_data, tokenizer, model_type=model_type)
+            model, tokenizer = add_new_tokens(model=model, tokenizer=tokenizer, new_tokens=phonetic_tokens, model_type=model_type, tag_dict=tag_dict)
 
         # Apply LoRA
         if run_config["lora"]["enabled"]:
@@ -216,13 +265,21 @@ if __name__ == "__main__":
         epochs = run_config["training"]["epochs"]
 
         total_steps = (total_train_samples // (batch_size * accumulation_steps)) * epochs
-        warmup_steps = int(0.1 * total_steps) # 10% warmup
-        eval_steps = total_steps // run_config["saving"]["save_steps_per_epoch"] # Evaluate and save based on save_steps_per_epoch
-        save_steps = total_steps // run_config["saving"]["save_steps_per_epoch"]
-
         every_n_steps = total_steps // (epochs * run_config["callbacks"]["text_output"]["every_n_steps_per_epoch"])
         if every_n_steps == 0:
             every_n_steps = 1 # Ensure at least one output per epoch if dataset is small
+        warmup_steps = int(0.1 * total_steps) # 10% warmup
+        # Evaluate and save based on save_steps_per_epoch
+        eval_steps = every_n_steps
+        save_steps = int(np.ceil((total_steps / (run_config["saving"]["save_steps_per_epoch"] * epochs)) / eval_steps) * eval_steps)
+
+        # Calculated Steps Summary
+        print("  Calculated Steps:")
+        print(f"    Total Steps: {total_steps}")
+        print(f"    Warmup Steps: {warmup_steps}")
+        print(f"    Eval Steps: {eval_steps}")
+        print(f"    Save Steps: {save_steps}")
+        print("-" * 50)
 
         # Initialize callbacks
         callbacks = []
@@ -235,7 +292,7 @@ if __name__ == "__main__":
             ))
 
         # Training arguments
-        training_args = transformers.TrainingArguments(
+        training_args = trl.SFTConfig(
             output_dir=f"./results/{run_config['name']}",
             per_device_train_batch_size=batch_size,
             gradient_accumulation_steps=accumulation_steps,
@@ -254,6 +311,7 @@ if __name__ == "__main__":
             weight_decay=run_config["training"]["weight_decay"],
             lr_scheduler_type=run_config["training"]["lr_scheduler_type"],
             eval_strategy="steps",
+            dataset_num_proc=2,
         )
 
         # Trainer
@@ -293,33 +351,59 @@ if __name__ == "__main__":
         print(f"GPU = {gpu_stats.name}. Max memory = {max_memory} GB.")
         print(f"{start_gpu_memory} GB of memory reserved.")
 
-        # Train
-        trainer.train()
+        # User Confirmation
+        if not args.no_confirm:
+            while True:
+                user_input = input("Do you want to train with these settings? (yes/no): ").lower()
+                if user_input in ["yes", "y"]:
+                    print("Proceeding with training...")
+                    break
+                elif user_input in ["no", "n"]:
+                    print("Skipping training for this run.")
+                    break
+                else:
+                    print("Invalid input. Please enter 'yes' or 'no'.")
+        else:
+            print("Skipping user confirmation due to --no-confirm flag.")
+            print("Proceeding with training...")
 
-        # Save and push to hub
-        if run_config["saving"]["saving_local"]:
-            model.save_pretrained(run_config["name"])
-            tokenizer.save_pretrained(run_config["name"])
-        
-        if run_config["saving"]["push_to_hub"]: 
-            model.push_to_hub(
-                repo_id=f"{run_config['saving']['hub_model_id_prefix']}/{run_config['name']}",
-                token=f"{run_config['saving']['hf_token_env_var']}",
-            )
-            tokenizer.push_to_hub(
-                repo_id=f"{run_config['saving']['hub_model_id_prefix']}/{run_config['name']}",
-                token=f"{run_config['saving']['hf_token_env_var']}",
-            )
 
-        # End WandB run
-        if run_config["training"].get("report_to") == "wandb":
-            wandb.finish()
+        # Train if confirmed or --no-confirm is present
+        if args.no_confirm or user_input in ["yes", "y"]:
+            trainer.train()
 
-        # Memory cleanup
-        del trainer
-        del model
-        del tokenizer
-        gc.collect()
-        torch.cuda.empty_cache()
+            # Save and push to hub
+            if run_config["saving"]["saving_local"]:
+                model.save_pretrained(run_config["name"])
+                tokenizer.save_pretrained(run_config["name"])
+            
+            if run_config["saving"]["push_to_hub"]: 
+                model.push_to_hub(
+                    repo_id=f"{run_config['saving']['hub_model_id_prefix']}/{run_config['name']}",
+                    token=f"{run_config['saving']['hf_token_env_var']}",
+                )
+                tokenizer.push_to_hub(
+                    repo_id=f"{run_config['saving']['hub_model_id_prefix']}/{run_config['name']}",
+                    token=f"{run_config['saving']['hf_token_env_var']}",
+                )
 
-        print(f"Finished training run: {run_config['name']}")
+            # End WandB run
+            if run_config["training"].get("report_to") == "wandb":
+                wandb.finish()
+
+            # Memory cleanup
+            del trainer
+            del model
+            del tokenizer
+            gc.collect()
+            torch.cuda.empty_cache()
+
+            print(f"Finished training run: {run_config['name']}")
+        else:
+             # Memory cleanup if training is skipped
+            del trainer
+            del model
+            del tokenizer
+            gc.collect()
+            torch.cuda.empty_cache()
+            print(f"Skipped training run: {run_config['name']}")

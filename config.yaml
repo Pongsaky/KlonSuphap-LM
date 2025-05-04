@@ -107,10 +107,11 @@ training_runs:
       train_embeddings: true # Only relevant if LoRA is enabled and target_modules includes embeddings
     data:
       type: "instruct" # "standard", "instruct"
-      train_files:
+      train_file : "./dataset/training_data.json"
+      instruct_train_files:
         - "./Instruct_Dataset/klon_tagged_train.json"
         - "./Instruct_Dataset/phonetic_nmt_train.json"
-      valid_files:
+      instruct_valid_files:
         - "./Instruct_Dataset/phonetic_nmt_valid.json"
       test_inputs_file: "./Instruct_Dataset/phonetic_nmt_valid.json" # Using a valid instruct dataset for the callback
       phonetic_token_file: "./dataset/phonetic_token.json"
