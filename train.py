@@ -78,27 +78,29 @@ class TextOutputCallback(transformers.TrainerCallback):
         self.current_step = state.global_step
         if self.current_step % self.every_n_steps == 0:
             print(f"\n--- Step {self.current_step} ---")
-            for i, test_input in enumerate(self.test_inputs):
-                print(f"Input {i+1}: {test_input}")
-                if self.data_type == "standard":
-                    inputs = self.tokenizer(test_input, return_tensors="pt").to(self.model.device)
 
-                    with torch.no_grad():
-                        outputs = self.model.generate(
-                            **inputs,
-                            max_new_tokens=100,
-                            use_cache=True,
-                            pad_token_id=self.tokenizer.pad_token_id,
-                            eos_token_id=self.tokenizer.eos_token_id,
-                        )
-                    
-                    response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-                    print(f"Output {i+1}: {response}")
-                elif self.data_type == "instruct":
-                    response = generate_response(self.model, self.tokenizer, test_input)
-                    print(f"Output {i+1}: {response}")
-            print("---------------------\n")
-        
+            rand_idx = int(torch.rand(1) * len(self.test_inputs))
+            sample_text = self.test_inputs[rand_idx]
+            
+            print(f"Input : {sample_text}")
+            if self.data_type == "standard":
+                inputs = self.tokenizer(sample_text, return_tensors="pt").to(self.model.device)
+
+                with torch.no_grad():
+                    outputs = self.model.generate(
+                        **inputs,
+                        max_new_tokens=100,
+                        use_cache=True,
+                        pad_token_id=self.tokenizer.pad_token_id,
+                        eos_token_id=self.tokenizer.eos_token_id,
+                    )
+                
+                response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+                print(f"Output : {response}")
+            elif self.data_type == "instruct":
+                response = generate_response(self.model, self.tokenizer, sample_text)
+                print(f"Output : {response}")
+
         return control
 
 
@@ -181,8 +183,9 @@ if __name__ == "__main__":
                 chat_template=run_config["data"]["chat_template"],
             )
 
-        # Add new tokens
-        model, tokenizer = add_new_tokens(model, tokenizer, phonetic_tokens, model_type=model_type)
+        if run_config["data"]["add_new_tokens"]:
+            # Add new tokens
+            model, tokenizer = add_new_tokens(model, tokenizer, phonetic_tokens, model_type=model_type)
 
         # Apply LoRA
         if run_config["lora"]["enabled"]:

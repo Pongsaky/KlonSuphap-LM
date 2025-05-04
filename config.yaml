@@ -17,6 +17,7 @@ training_runs:
       valid_file: "./dataset/valid_data.json"
       test_inputs_file: "./dataset/test_inputs.json" # List of strings for standard callback
       phonetic_token_file: "./dataset/phonetic_token.json"
+      add_new_tokens: true
       chat_template: "llama3"
     training:
       epochs: 3
@@ -64,6 +65,7 @@ training_runs:
       valid_file: "./dataset/valid_data.json"
       test_inputs_file: "./dataset/test_inputs.json" # List of strings for standard callback
       phonetic_token_file: "./dataset/phonetic_token.json"
+      add_new_tokens: true
     training:
       epochs: 3
       batch_size: 16
@@ -112,6 +114,7 @@ training_runs:
         - "./Instruct_Dataset/phonetic_nmt_valid.json"
       test_inputs_file: "./Instruct_Dataset/phonetic_nmt_valid.json" # Using a valid instruct dataset for the callback
       phonetic_token_file: "./dataset/phonetic_token.json"
+      add_new_tokens: true
     training:
       epochs: 2
       batch_size: 64
