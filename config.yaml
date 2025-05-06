@@ -1,5 +1,5 @@
 training_runs:
-  - name: llama3.2-typhoon2-1b-standard
+  - name: llama3.2-typhoon2-1b-instruct-test
     model:
       name: "scb10x/llama3.2-typhoon2-1b"
       type: "llama" # "llama", "gemma"
@@ -7,100 +7,6 @@ training_runs:
       max_seq_length: 1024
     lora:
       enabled: false
-      r: 8
-      alpha: 8
-      target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head", "embed_tokens"]
-      train_embeddings: true # Only relevant if LoRA is enabled and target_modules includes embeddings
-    data:
-      type: "standard" # "standard", "instruct"
-      train_file: "./dataset/training_data.json"
-      valid_file: "./dataset/valid_data.json"
-      test_inputs_file: "./dataset/test_inputs.json" # List of strings for standard callback
-      phonetic_token_file: "./dataset/phonetic_token.json"
-      add_new_tokens: true
-      chat_template: "llama3"
-    training:
-      epochs: 3
-      batch_size: 24
-      accumulation_steps: 3
-      learning_rate: 2e-4
-      optim: "adamw_8bit"
-      weight_decay: 0.01
-      lr_scheduler_type: "cosine"
-      seed: 3407
-      report_to: "wandb"
-      load_best_model_at_end: true
-    callbacks:
-      text_output:
-        enabled: true
-        every_n_steps_per_epoch: 20 # Number of times to output text per epoch
-      early_stopping:
-        enabled: true
-        patience: 5
-    saving:
-      save_steps_per_epoch: 1 # Number of times to save per epoch
-      saving_local: true
-      push_to_hub: true
-      hub_model_id_prefix: "Pongsaky"
-      hf_token_env_var: "HUGGINGFACE_API_KEY"
-    wandb:
-      project: "nlp-phonetic"
-      api_key_env_var: "WANDB_API_KEY"
-
-  - name: gemma-3-4b-standard
-    model:
-      name: "unsloth/gemma-3-4b-pt-unsloth-bnb-4bit"
-      type: "gemma" # "llama", "gemma"
-      quantization: "4bit" # "4bit", "8bit", "full"
-      max_seq_length: 1024
-    lora:
-      enabled: true
-      r: 8
-      alpha: 8
-      target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"] # Gemma-3 specific target modules
-      train_embeddings: true # Option to train embeddings for Gemma-3
-    data:
-      type: "standard" # "standard", "instruct"
-      train_file: "./dataset/training_data.json"
-      valid_file: "./dataset/valid_data.json"
-      test_inputs_file: "./dataset/test_inputs.json" # List of strings for standard callback
-      phonetic_token_file: "./dataset/phonetic_token.json"
-      add_new_tokens: true
-    training:
-      epochs: 3
-      batch_size: 16
-      accumulation_steps: 1
-      learning_rate: 2e-4
-      optim: "adamw_8bit"
-      weight_decay: 0.01
-      lr_scheduler_type: "cosine"
-      seed: 3407
-      report_to: "wandb"
-      load_best_model_at_end: true
-    callbacks:
-      text_output:
-        enabled: true
-        every_n_steps_per_epoch: 20 # Number of times to output text per epoch
-      early_stopping:
-        enabled: true
-        patience: 5
-    saving:
-      save_steps_per_epoch: 1 # Number of times to save per epoch
-      push_to_hub: true
-      hub_model_id_prefix: "Pongsaky"
-      hf_token_env_var: "HUGGINGFACE_API_KEY"
-    wandb:
-      project: "nlp-phonetic"
-      api_key_env_var: "WANDB_API_KEY"
-
-  - name: llama3.2-typhoon2-1b-instruct
-    model:
-      name: "scb10x/llama3.2-typhoon2-1b-instruct"
-      type: "llama" # "llama", "gemma"
-      quantization: "full" # "4bit", "8bit", "full"
-      max_seq_length: 1024
-    lora:
-      enabled: true
       r: 8
       alpha: 8
       target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head", "embed_tokens"]
@@ -116,17 +22,20 @@ training_runs:
       test_inputs_file: "./Instruct_Dataset/phonetic_nmt_valid.json" # Using a valid instruct dataset for the callback
       phonetic_token_file: "./dataset/phonetic_token.json"
       add_new_tokens: true
+      chat_template: "llama3"
     training:
-      epochs: 2
-      batch_size: 64
+      epochs: 3
+      batch_size: 32
       accumulation_steps: 1
-      learning_rate: 2e-4
+      learning_rate: 2e-5
+      logging_steps: 10
       optim: "adamw_8bit"
       weight_decay: 0.01
       lr_scheduler_type: "cosine"
       seed: 3407
       report_to: "wandb"
       load_best_model_at_end: true
+      eval_times_per_epoch: 3
     callbacks:
       text_output:
         enabled: true
@@ -136,9 +45,153 @@ training_runs:
         patience: 5
     saving:
       save_steps_per_epoch: 1 # Number of times to save per epoch
+      saving_local: true
       push_to_hub: true
       hub_model_id_prefix: "Pongsaky"
-      hf_token_env_var: "HUGGINGFACE_API_KEY"
+      hf_token_env_var: "paste-your-huggingface-api-key-here"
     wandb:
       project: "nlp-phonetic"
-      api_key_env_var: "WANDB_API_KEY"
+      api_key_env_var: "paste-your-wandb-api-key-here"
+  # - name: llama3.2-typhoon2-1b-standard
+  #   model:
+  #     name: "scb10x/llama3.2-typhoon2-1b"
+  #     type: "llama" # "llama", "gemma"
+  #     quantization: "full" # "4bit", "8bit", "full"
+  #     max_seq_length: 1024
+  #   lora:
+  #     enabled: false
+  #     r: 8
+  #     alpha: 8
+  #     target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head", "embed_tokens"]
+  #     train_embeddings: true # Only relevant if LoRA is enabled and target_modules includes embeddings
+  #   data:
+  #     type: "standard" # "standard", "instruct"
+  #     train_file: "./dataset/training_data.json"
+  #     valid_file: "./dataset/valid_data.json"
+  #     test_inputs_file: "./dataset/test_inputs.json" # List of strings for standard callback
+  #     phonetic_token_file: "./dataset/phonetic_token.json"
+  #     add_new_tokens: true
+  #     chat_template: "llama3"
+  #   training:
+  #     epochs: 3
+  #     batch_size: 24
+  #     accumulation_steps: 3
+  #     learning_rate: 2e-4
+  #     optim: "adamw_8bit"
+  #     weight_decay: 0.01
+  #     lr_scheduler_type: "cosine"
+  #     seed: 3407
+  #     report_to: "wandb"
+  #     load_best_model_at_end: true
+  #   callbacks:
+  #     text_output:
+  #       enabled: true
+  #       every_n_steps_per_epoch: 20 # Number of times to output text per epoch
+  #     early_stopping:
+  #       enabled: true
+  #       patience: 5
+  #   saving:
+  #     save_steps_per_epoch: 1 # Number of times to save per epoch
+  #     saving_local: true
+  #     push_to_hub: true
+  #     hub_model_id_prefix: "Pongsaky"
+  #     hf_token_env_var: "HUGGINGFACE_API_KEY"
+  #   wandb:
+  #     project: "nlp-phonetic"
+  #     api_key_env_var: "WANDB_API_KEY"
+
+  # - name: gemma-3-4b-standard
+  #   model:
+  #     name: "unsloth/gemma-3-4b-pt-unsloth-bnb-4bit"
+  #     type: "gemma" # "llama", "gemma"
+  #     quantization: "4bit" # "4bit", "8bit", "full"
+  #     max_seq_length: 1024
+  #   lora:
+  #     enabled: true
+  #     r: 8
+  #     alpha: 8
+  #     target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"] # Gemma-3 specific target modules
+  #     train_embeddings: true # Option to train embeddings for Gemma-3
+  #   data:
+  #     type: "standard" # "standard", "instruct"
+  #     train_file: "./dataset/training_data.json"
+  #     valid_file: "./dataset/valid_data.json"
+  #     test_inputs_file: "./dataset/test_inputs.json" # List of strings for standard callback
+  #     phonetic_token_file: "./dataset/phonetic_token.json"
+  #     add_new_tokens: true
+  #   training:
+  #     epochs: 3
+  #     batch_size: 16
+  #     accumulation_steps: 1
+  #     learning_rate: 2e-4
+  #     optim: "adamw_8bit"
+  #     weight_decay: 0.01
+  #     lr_scheduler_type: "cosine"
+  #     seed: 3407
+  #     report_to: "wandb"
+  #     load_best_model_at_end: true
+  #   callbacks:
+  #     text_output:
+  #       enabled: true
+  #       every_n_steps_per_epoch: 20 # Number of times to output text per epoch
+  #     early_stopping:
+  #       enabled: true
+  #       patience: 5
+  #   saving:
+  #     save_steps_per_epoch: 1 # Number of times to save per epoch
+  #     push_to_hub: true
+  #     hub_model_id_prefix: "Pongsaky"
+  #     hf_token_env_var: "HUGGINGFACE_API_KEY"
+  #   wandb:
+  #     project: "nlp-phonetic"
+  #     api_key_env_var: "WANDB_API_KEY"
+
+  # - name: llama3.2-typhoon2-1b-instruct
+  #   model:
+  #     name: "scb10x/llama3.2-typhoon2-1b-instruct"
+  #     type: "llama" # "llama", "gemma"
+  #     quantization: "full" # "4bit", "8bit", "full"
+  #     max_seq_length: 1024
+  #   lora:
+  #     enabled: true
+  #     r: 8
+  #     alpha: 8
+  #     target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head", "embed_tokens"]
+  #     train_embeddings: true # Only relevant if LoRA is enabled and target_modules includes embeddings
+  #   data:
+  #     type: "instruct" # "standard", "instruct"
+  #     train_file : "./dataset/training_data.json"
+  #     instruct_train_files:
+  #       - "./Instruct_Dataset/klon_tagged_train.json"
+  #       - "./Instruct_Dataset/phonetic_nmt_train.json"
+  #     instruct_valid_files:
+  #       - "./Instruct_Dataset/phonetic_nmt_valid.json"
+  #     test_inputs_file: "./Instruct_Dataset/phonetic_nmt_valid.json" # Using a valid instruct dataset for the callback
+  #     phonetic_token_file: "./dataset/phonetic_token.json"
+  #     add_new_tokens: true
+  #   training:
+  #     epochs: 2
+  #     batch_size: 64
+  #     accumulation_steps: 1
+  #     learning_rate: 2e-4
+  #     optim: "adamw_8bit"
+  #     weight_decay: 0.01
+  #     lr_scheduler_type: "cosine"
+  #     seed: 3407
+  #     report_to: "wandb"
+  #     load_best_model_at_end: true
+  #   callbacks:
+  #     text_output:
+  #       enabled: true
+  #       every_n_steps_per_epoch: 20 # Number of times to output text per epoch
+  #     early_stopping:
+  #       enabled: true
+  #       patience: 5
+  #   saving:
+  #     save_steps_per_epoch: 1 # Number of times to save per epoch
+  #     push_to_hub: true
+  #     hub_model_id_prefix: "Pongsaky"
+  #     hf_token_env_var: "HUGGINGFACE_API_KEY"
+  #   wandb:
+  #     project: "nlp-phonetic"
+  #     api_key_env_var: "WANDB_API_KEY"

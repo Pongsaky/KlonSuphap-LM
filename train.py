@@ -28,6 +28,7 @@ def add_conversation(conversation: list[dict], role: str, content: str):
     })
 
 def formatting_conversation(examples):
+    # print(examples)
     dict_convs = examples["text"]
 
     conversations = []
@@ -40,6 +41,12 @@ def formatting_conversation(examples):
 
     return {"conversations": conversations}
 
+
+def formatting_prompts_func(examples):
+   convos = examples["conversations"]
+   texts = [tokenizer.apply_chat_template(convo, tokenize=False, add_generation_prompt=False).removeprefix(
+       '<|begin_of_text|>') for convo in convos]
+   return {"text": texts, }
 
 # Function for instruct model inference during callbacks
 def generate_response(model, tokenizer, messages, max_new_tokens=100, temperature=0.9, top_p=0.95, top_k=64):
@@ -161,8 +168,10 @@ if __name__ == "__main__":
             print(f"    Valid File: {run_config['data']['valid_file']}")
             print(f"    Test Inputs File: {run_config['data']['test_inputs_file']}")
         elif data_type == "instruct":
-            print(f"    Train Files: {run_config['data']['train_files']}")
-            print(f"    Valid Files: {run_config['data']['valid_files']}")
+            print(
+                f"    Train Files: {run_config['data']['instruct_train_files']}")
+            print(
+                f"    Valid Files: {run_config['data']['instruct_valid_files']}")
             print(f"    Test Inputs File: {run_config['data']['test_inputs_file']}")
         print(f"    Phonetic Tokens File: {run_config['data']['phonetic_token_file']}")
 
@@ -191,8 +200,9 @@ if __name__ == "__main__":
             # Load instruct datasets
             instruct_train_files = run_config["data"]["instruct_train_files"]
             instruct_valid_files = run_config["data"]["instruct_valid_files"]
-            train_datasets = [datasets.Dataset.from_json(f) for f in instruct_train_files]
-            valid_datasets = [datasets.Dataset.from_json(f) for f in instruct_valid_files]
+
+            train_datasets = [datasets.Dataset.from_dict({"text": get_data_from_json(f)}) for f in instruct_train_files]
+            valid_datasets = [datasets.Dataset.from_dict({"text": get_data_from_json(f)}) for f in instruct_valid_files]
             train_dataset = datasets.concatenate_datasets(train_datasets)
             valid_dataset = datasets.concatenate_datasets(valid_datasets)
             # test_inputs_raw = get_data_from_json(run_config["data"]["test_inputs_file"])
@@ -201,12 +211,8 @@ if __name__ == "__main__":
             # test_inputs = [add_conversation({"messages": item})["text"] for item in test_inputs_raw]
 
             # Prepare instruct datasets
-            train_dataset = train_datasets.map(formatting_conversation, batched=True)
-            valid_dataset = valid_datasets.map(formatting_conversation, batched=True)
-
-        # Shuffle datasets
-        train_dataset = train_dataset.shuffle(seed=run_config["training"]["seed"])
-        valid_dataset = valid_dataset.shuffle(seed=run_config["training"]["seed"])
+            train_dataset = train_dataset.map(formatting_conversation, batched=True)
+            valid_dataset = valid_dataset.map(formatting_conversation, batched=True)
 
         # Load model and tokenizer
         model_type = run_config["model"]["type"]
@@ -224,6 +230,7 @@ if __name__ == "__main__":
             full_finetuning=full_finetuning,
             token=run_config["saving"]["hf_token_env_var"], # Use environment variable
         )
+
         
         if run_config["data"]["type"] == "instruct":
             tokenizer = unsloth.chat_templates.get_chat_template(
@@ -235,6 +242,15 @@ if __name__ == "__main__":
             # Add new tokens
             tag_dict = llm_utils.extract_phonetic_combinations(train_data, tokenizer, model_type=model_type)
             model, tokenizer = add_new_tokens(model=model, tokenizer=tokenizer, new_tokens=phonetic_tokens, model_type=model_type, tag_dict=tag_dict)
+
+        if run_config["data"]["type"] == "instruct":
+            # Format the dataset for instruct
+            train_dataset = train_dataset.map(formatting_prompts_func, batched=True)
+            valid_dataset = valid_dataset.map(formatting_prompts_func, batched=True)
+
+        # Shuffle datasets
+        train_dataset = train_dataset.shuffle(seed=run_config["training"]["seed"])
+        valid_dataset = valid_dataset.shuffle(seed=run_config["training"]["seed"])
 
         # Apply LoRA
         if run_config["lora"]["enabled"]:
@@ -270,7 +286,7 @@ if __name__ == "__main__":
             every_n_steps = 1 # Ensure at least one output per epoch if dataset is small
         warmup_steps = int(0.1 * total_steps) # 10% warmup
         # Evaluate and save based on save_steps_per_epoch
-        eval_steps = every_n_steps
+        eval_steps = total_steps // (epochs * run_config["training"]["eval_times_per_epoch"])
         save_steps = int(np.ceil((total_steps / (run_config["saving"]["save_steps_per_epoch"] * epochs)) / eval_steps) * eval_steps)
 
         # Calculated Steps Summary
@@ -302,7 +318,7 @@ if __name__ == "__main__":
             optim=run_config["training"]["optim"],
             seed=run_config["training"]["seed"],
             report_to=run_config["training"].get("report_to"),
-            logging_steps=1, # Log every step
+            logging_steps=run_config["training"]["logging_steps"],
             eval_steps=eval_steps,
             save_steps=save_steps,
             load_best_model_at_end=run_config["training"]["load_best_model_at_end"],
@@ -312,6 +328,8 @@ if __name__ == "__main__":
             lr_scheduler_type=run_config["training"]["lr_scheduler_type"],
             eval_strategy="steps",
             dataset_num_proc=2,
+            fp16=not unsloth.is_bf16_supported(),
+            bf16=unsloth.is_bf16_supported(),
         )
 
         # Trainer
