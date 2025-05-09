@@ -215,14 +215,22 @@ if __name__ == "__main__":
             new_batch_prompts_raw = []
             current_index = 0
             pbar_items = tqdm(total=len(test_data), desc=f"Processing items for {run_name}")
+            
+            current_index_cnt_duplicate = 0
+            prev_current_index = -1
 
-            while current_index < len(test_data):
+            while current_index - len(new_batch_prompts_raw) < len(test_data):
                 print(f"\nCurrent index: {current_index}")
-                end_index = current_index + batch_size - len(new_batch_prompts_raw)
+                if prev_current_index == current_index:
+                    current_index_cnt_duplicate += 1
+                    if current_index_cnt_duplicate >= 5:
+                        break
+                    
+                end_index = min(current_index + min(batch_size, len(test_data)) - len(new_batch_prompts_raw), len(test_data))
                 batch_prompts_raw = test_data[current_index:end_index]
 
                 if new_batch_prompts_raw:
-                    batch_prompts_raw = new_batch_prompts_raw + batch_prompts_raw
+                    batch_prompts_raw.extend(new_batch_prompts_raw)
                 new_batch_prompts_raw = []
 
                 if len(batch_prompts_raw) > batch_size:
@@ -302,6 +310,7 @@ if __name__ == "__main__":
                         new_batch_prompts_raw.append(batch_prompts_raw[i])
                         continue
                 
+                prev_current_index = current_index
                 current_index = end_index
 
             pbar_items.close()
