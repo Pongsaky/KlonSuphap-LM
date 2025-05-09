@@ -128,6 +128,10 @@ if __name__ == "__main__":
     # Default system prompt for instruct models
     DEFAULT_SYSTEM_PROMPT = "You are an expert Thai poet specializing in `กลอนแปด` (Eight-syllable verse) poetry. When a user provides a prompt, respond ONLY with a Thai poem (2-4 stanzas) that addresses their request, without any explanations or commentary. Your poem must strictly follow traditional กลอนแปด structure and rhyming patterns. Include phonetic rhyming tags for all rhyming words using the format: `<r>[vowel][ending consonant]word</r>` (examples: `<r>[a][w]เขา</r>`, `<r>[o][k]นก</r>`, `<r>[a]ผา</r>`, `<r>[i]ศรี</r>`). These tags should mark all external and internal rhymes according to proper กลอนแปด structure. Create vivid, culturally appropriate poetry that demonstrates mastery of Thai prosody while faithfully addressing the user's requested theme or scenario."
 
+    # Check eval_results directory
+    if not os.path.exists("eval_results"):
+        os.makedirs("eval_results")
+
     with open("eval_config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
@@ -199,7 +203,7 @@ if __name__ == "__main__":
                     print("Resized model token embeddings.")
 
             print(f"Loading test data from: {test_inputs_file}")
-            test_data = get_data_from_json(test_inputs_file)
+            test_data = get_data_from_json(test_inputs_file)[:10]
             if not isinstance(test_data, list):
                 print(f"Error: Test data in {test_inputs_file} is not a list. Skipping run.")
                 continue
@@ -271,9 +275,20 @@ if __name__ == "__main__":
                     print_poem_formatted(gen_text)
                     
                     try:
-                        # Assuming get_n_stanza is designed to work with the raw generated text
-                        # and might raise an exception if the format is not as expected (e.g., not enough stanzas)
-                        word_check.get_n_stanza(gen_text, 2) # Example: check for at least 2 stanzas
+                        # Check stanza
+                        word_check.get_n_stanza(gen_text, 2)
+                        # Check length fails
+
+                        gen_text_waks = word_check.format_str_waks(gen_text)
+                        klon_vow_mat, klon_th, is_word_fail = word_check.format_waks_syl(gen_text_waks)
+
+                        if is_word_fail:
+                            raise ValueError("WordFail")
+                        
+                        for wak in klon_th:
+                            if len(wak) < 5 or len(wak) > 10:
+                                raise ValueError("LengthFail")
+                        
                         outputs_evaluation.append({
                             "input_prompt": user_prompt_display,
                             "generated_output": gen_text,
@@ -282,8 +297,9 @@ if __name__ == "__main__":
                         })
                         pbar_items.update(1)
                     except Exception as e:
-                        print(f"Output validation failed: {e}. Skipping this output.")
+                        print(f"Output validation failed: {e}. Re-trying this prompt.")
                         # new_batch_messages_for_model.append(batch_messages_for_model[i])
+                        print(f"Raw conversation prompt: {batch_messages_for_model[i]}")
                         new_batch_prompts_raw.append(batch_prompts_raw[i])
                         continue
                 

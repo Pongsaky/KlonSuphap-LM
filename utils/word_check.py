@@ -127,7 +127,7 @@ def get_n_stanza(text: str, n: int):
     n_line = n * 2 * 2
 
     splited_text = text.split("\t")
-    if len(splited_text) > n_line:
+    if len(splited_text) >= n_line:
         splited_text = splited_text[:n_line]
     elif len(splited_text) < n_line:
         raise ValueError("The text must contain at least {} lines.".format(n_line))
