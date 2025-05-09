@@ -1,0 +1,55 @@
+evaluation_runs:
+  - name: llama3.2-typhoon2-1b-instruct-tagged_nmt-mixed-eval
+    model:
+      id: "Pongsaky/llama3.2-typhoon2-1b-instruct-tagged_nmt_syllable_mixed"
+      type: "instruct_model" # "instruct_model", "base_model"
+      is_phonetic: true
+      is_adapter: false
+    data:
+      test_inputs_file: "./Instruct_Dataset/phonetic_nmt_valid.json" # Path to the test data
+      phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+    inference:
+      batch_size: 2
+      max_new_tokens: 512
+      temperature: 0.9
+      top_p: 0.95
+      top_k: 64
+    output:
+      file_prefix: "eval_results" # Prefix for the output JSON file (e.g., eval_results_llama3.2-typhoon2-1b-instruct-tagged_nmt-mixed-eval.json)
+
+  # - name: gemma-3-4b-it-unsloth-bnb-4bit-phonetic-fine-tuned-eval
+  #   model:
+  #     id: "Pongsaky/gemma-3-4b-it-unsloth-bnb-4bit-phonetic-fine-tuned"
+  #     type: "base_model" # "instruct_model", "base_model"
+  #     is_phonetic: true
+  #     is_adapter: false
+  #   data:
+  #     test_inputs_file: "./dataset/test_inputs_phonetic.json" # Path to the test data
+  #     phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+  #   inference:
+  #     batch_size: 2
+  #     max_new_tokens: 512
+  #     temperature: 0.9
+  #     top_p: 0.9
+  #     top_k: 64
+  #   output:
+  #     file_prefix: "eval_results" # Prefix for the output JSON file
+
+  # - name: llama3.2-typhoon2-1b-lora-unfreeze-embedding-phonetic-eval
+  #   model:
+  #     id: "Pongsaky/llama3.2-typhoon2-1b-lora-unfreeze-embedding-phonetic" # Adapter ID
+  #     base_model_id: "scb10x/llama3.2-typhoon2-1b" # Base model ID
+  #     type: "base_model" # "instruct_model", "base_model"
+  #     is_phonetic: true
+  #     is_adapter: true
+  #   data:
+  #     test_inputs_file: "./dataset/test_inputs_phonetic.json" # Path to the test data
+  #     phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+  #   inference:
+  #     batch_size: 2
+  #     max_new_tokens: 512
+  #     temperature: 0.9
+  #     top_p: 0.9
+  #     top_k: 64
+  #   output:
+  #     file_prefix: "eval_results" # Prefix for the output JSON file
