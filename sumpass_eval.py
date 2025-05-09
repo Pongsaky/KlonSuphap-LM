@@ -34,6 +34,8 @@ def sumpass_score(bot_VowMat,bot_th): # bot_VowMat = ['a', 'xxN', 'oot', '@@t']
             score[0] += 1
             if s1_th == cur_th:
                 repli[0] += 1
+                print(bot_th)
+                print(f"repli[0] = {repli[0]} s1_th = {s1_th} cur_th = {cur_th}")
             break
 
     s2 = replace_long_short(bot_VowMat[1][-1])
@@ -43,7 +45,9 @@ def sumpass_score(bot_VowMat,bot_th): # bot_VowMat = ['a', 'xxN', 'oot', '@@t']
         score[1] += 1
         if s2_th == bot_th[2][-1]:
             repli[1] += 1
-
+            print(bot_th)
+            print(f"repli[1] = {repli[1]} s2_th = {s2_th} bot_th[2][-1] = {bot_th[2][-1]}")
+    
     for i in [1,2,3,4]:
         cur = replace_long_short(bot_VowMat[3][i])
         cur_th = bot_th[3][i]
@@ -51,6 +55,8 @@ def sumpass_score(bot_VowMat,bot_th): # bot_VowMat = ['a', 'xxN', 'oot', '@@t']
             score[2] += 1
             if s2_th == cur_th:
                 repli[2] += 1
+                print(bot_th)
+                print(f"repli[2] = {repli[2]} s2_th = {s2_th} cur_th = {cur_th}")
             break
     
     s2_2 = replace_long_short(bot_VowMat[2][-1])
@@ -62,6 +68,8 @@ def sumpass_score(bot_VowMat,bot_th): # bot_VowMat = ['a', 'xxN', 'oot', '@@t']
             score[3] += 1
             if s2_2_th == cur_th:
                 repli[3] += 1
+                print(bot_th)
+                print(f"repli[3] = {repli[3]} s2_2_th = {s2_2_th} cur_th = {cur_th}")
             break
 
     return score, repli
@@ -78,16 +86,19 @@ def get_score(txt):
     klon_VowMat, klon_th, fail = format_waks_syl(txt_waks)
 
     if len(txt_waks) < 8:
+        print(f"WakNumberFail: {txt_waks}")
         return "WakNumberFail"
 
     bots_VowMat = [klon_VowMat[0:4], klon_VowMat[4:8]]
     bots_th = [klon_th[0:4], klon_th[4:8]]
 
     if fail:
+        print(f"WordFail: {txt_waks}")
         return "WordFail"
     
     for wak in klon_th:
         if len(wak) < 5 or len(wak) > 10:
+            print(f"LengthFail: {wak}")
             return "LengthFail"
     
     score = []
@@ -113,12 +124,12 @@ def get_score(txt):
 
 def process_klon(klon):
     """Processes a single klon item to calculate scores."""
-    cur_row = [klon["input"], klon["output"]]
+    cur_row = [klon["input_prompt"], klon["generated_output"]]
     fail_count = [0, 0, 0]
     score = [0] * 9
     repli = [0] * 9
 
-    result = get_score(klon["output"])
+    result = get_score(klon["generated_output"])
 
     if result == "WakNumberFail":
         fail_count[0] += 1

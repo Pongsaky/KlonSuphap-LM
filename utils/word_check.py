@@ -124,11 +124,11 @@ def sumpass_score(bot_VowMat,bot_th): # bot_VowMat = ['a', 'xxN', 'oot', '@@t']
     return score
 
 def get_n_stanza(text: str, n: int):
-    n_line = n * 2
+    n_line = n * 2 * 2
 
-    splited_text = text.split("\n")
+    splited_text = text.split("\t")
     if len(splited_text) > n_line:
         splited_text = splited_text[:n_line]
     elif len(splited_text) < n_line:
         raise ValueError("The text must contain at least {} lines.".format(n_line))
-    return "\n".join(splited_text)
+    return "\t".join(splited_text)
