@@ -48,10 +48,10 @@ training_runs:
       saving_local: true
       push_to_hub: true
       hub_model_id_prefix: "Pongsaky"
-      hf_token_env_var: "paste-your-huggingface-api-key-here"
+      hf_token_env_var: "paste-your-huggingface-token-here"
     wandb:
       project: "nlp-phonetic"
-      api_key_env_var: "paste-your-wandb-api-key-here"
+      api_key_env_var: "paste-your-wandb-token-here"
   # - name: llama3.2-typhoon2-1b-standard
   #   model:
   #     name: "scb10x/llama3.2-typhoon2-1b"

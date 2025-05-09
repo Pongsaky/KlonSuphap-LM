@@ -1,4 +1,4 @@
-import unsloth
+# import unsloth
 import yaml
 import os
 import torch
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     with open("eval_config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
-    for run_config in config.get("evaluation_runs", []):
+    for run_config in tqdm(config.get("evaluation_runs", []), desc="Overall Evaluation Progress"):
         run_name = run_config.get("name", "unnamed_eval_run")
         print(f"\n--- Starting Evaluation Run: {run_name} ---")
 
@@ -199,7 +199,7 @@ if __name__ == "__main__":
                     print("Resized model token embeddings.")
 
             print(f"Loading test data from: {test_inputs_file}")
-            test_data = get_data_from_json(test_inputs_file)[:10]
+            test_data = get_data_from_json(test_inputs_file)
             if not isinstance(test_data, list):
                 print(f"Error: Test data in {test_inputs_file} is not a list. Skipping run.")
                 continue
@@ -207,16 +207,19 @@ if __name__ == "__main__":
             print(f"Found {len(test_data)} test inputs.")
 
             outputs_evaluation = []
-            new_batch_messages_for_model = []
+            # new_batch_messages_for_model = []
+            new_batch_prompts_raw = []
             current_index = 0
+            pbar_items = tqdm(total=len(test_data), desc=f"Processing items for {run_name}")
 
             while current_index < len(test_data):
-                end_index = current_index + batch_size - len(new_batch_messages_for_model)
-                batch_prompts_raw = test_data[current_index: current_index + end_index]
-                
-                if new_batch_messages_for_model:
-                    batch_prompts_raw = new_batch_messages_for_model + batch_prompts_raw
-                    new_batch_messages_for_model = []
+                print(f"\nCurrent index: {current_index}")
+                end_index = current_index + batch_size - len(new_batch_prompts_raw)
+                batch_prompts_raw = test_data[current_index:end_index]
+
+                if new_batch_prompts_raw:
+                    batch_prompts_raw = new_batch_prompts_raw + batch_prompts_raw
+                new_batch_prompts_raw = []
 
                 if len(batch_prompts_raw) > batch_size:
                     raise ValueError(f"Batch size exceeded: {len(batch_prompts_raw)} > {batch_size}")
@@ -237,10 +240,12 @@ if __name__ == "__main__":
                             batch_messages_for_model.append(item)
                         else:
                              print(f"Warning: Skipping invalid base model data item: {item}")
-                
+                             
                 if not batch_messages_for_model:
-                    current_index += len(batch_prompts_raw) # Ensure progress even if all items in batch are invalid
-                    if not batch_prompts_raw: # If the raw batch was empty (e.g. end of list)
+                    # Ensure progress even if all items in batch are invalid
+                    current_index += len(batch_prompts_raw)
+                    # If the raw batch was empty (e.g. end of list)
+                    if not batch_prompts_raw:
                         break
                     continue
 
@@ -275,23 +280,21 @@ if __name__ == "__main__":
                             "model_id": model_id,
                             "run_name": run_name
                         })
-                        print("Output validated (basic stanza check).")
+                        pbar_items.update(1)
                     except Exception as e:
                         print(f"Output validation failed: {e}. Skipping this output.")
-                        new_batch_messages_for_model.append(batch_messages_for_model[i])
+                        # new_batch_messages_for_model.append(batch_messages_for_model[i])
+                        new_batch_prompts_raw.append(batch_prompts_raw[i])
                         continue
-
+                
                 current_index = end_index
-                if new_batch_messages_for_model:
-                    print(f"Retrying {len(new_batch_messages_for_model)} invalid outputs...")
 
+            pbar_items.close()
             output_filename = f"eval_results/{output_file_prefix}_{run_name.replace(' ', '_')}.json"
             with open(output_filename, "w", encoding="utf-8") as f_out:
                 json.dump(outputs_evaluation, f_out, ensure_ascii=False, indent=4)
             print(f"\nResults for run '{run_name}' saved to {output_filename}")
 
-        except Exception as e:
-            print(f"Error during evaluation run '{run_name}': {e}")
         finally:
             # Clean up model and clear cache
             del model

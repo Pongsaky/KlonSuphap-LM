@@ -6,7 +6,7 @@ evaluation_runs:
       is_phonetic: true
       is_adapter: false
     data:
-      test_inputs_file: "./Instruct_Dataset/phonetic_nmt_valid.json" # Path to the test data
+      test_inputs_file: "./Instruct_Dataset/klon_tagged_valid.json" # Path to the test data
       phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
     inference:
       batch_size: 2
