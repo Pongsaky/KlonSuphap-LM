@@ -275,12 +275,11 @@ if __name__ == "__main__":
                     print_poem_formatted(gen_text)
                     
                     try:
-                        # Check stanza
-                        word_check.get_n_stanza(gen_text, 2)
-                        # Check length fails
-
                         gen_text_waks = word_check.format_str_waks(gen_text)
                         klon_vow_mat, klon_th, is_word_fail = word_check.format_waks_syl(gen_text_waks)
+
+                        if len(gen_text_waks) < 8:
+                            raise ValueError("WakNumberFail")
 
                         if is_word_fail:
                             raise ValueError("WordFail")
