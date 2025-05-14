@@ -8,7 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 import multiprocessing
 
-from utils.word_check import replace_long_short, format_str_waks, format_waks_syl
+from utils.word_check import replace_long_short, format_str_waks, format_waks_syl, get_n_stanza
 
 import argparse
 
@@ -124,12 +124,14 @@ def get_score(txt):
 
 def process_klon(klon):
     """Processes a single klon item to calculate scores."""
-    cur_row = [klon["input_prompt"], klon["generated_output"]]
+    # cur_row = [klon["input_prompt"], klon["generated_output"]]
+    cur_row = [klon["input_prompt"], get_n_stanza(klon["generated_output"], 1).strip()]
     fail_count = [0, 0, 0]
     score = [0] * 9
     repli = [0] * 9
 
-    result = get_score(klon["generated_output"])
+    result = get_score(get_n_stanza(klon["generated_output"], 1).strip())
+    # result = get_score(klon["generated_output"])
 
     if result == "WakNumberFail":
         fail_count[0] += 1
@@ -166,10 +168,14 @@ if __name__ == "__main__":
     
     save_path = args.eval_save_path
 
-    save_eval_path = save_path+"/test_eval.csv"
+    test_path = args.test_path
+    test_path = test_path.split("/")[-1].replace(".json", ".csv")
+
+    # save_eval_path = save_path + "/test_eval.csv"
+    save_eval_path = save_path + "/full_" + test_path
     print(f"Saving evaluation result to {save_eval_path}")
     df.to_csv(save_eval_path)
-    save_sum_eval_path = save_path+"/test_eval_summary.csv"
+    save_sum_eval_path = save_path + "/summary_" + test_path
     print(f"Saving evaluation summary to {save_sum_eval_path}")
     summary_df = df.sum(axis=0) 
     summary_df.iloc[2:].to_csv(save_sum_eval_path)

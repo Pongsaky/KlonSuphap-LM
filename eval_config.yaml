@@ -1,55 +1,205 @@
 evaluation_runs:
-  - name: llama3.2-typhoon2-1b-instruct-tagged_nmt-mixed-eval
+# Instruct model
+#   - name: llama3.2-typhoon2-1b-instruct-tagged_nmt-mixed
+#     model:
+#       id: "Pongsaky/llama3.2-typhoon2-1b-instruct-tagged_nmt-mixed"
+#       type: "instruct_model" # "instruct_model", "base_model"
+#       is_phonetic: true
+#       is_adapter: false
+#     data:
+#       test_inputs_file: "./Instruct_Dataset/klon_tagged_valid.json" # Path to the test data
+#       phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+#     inference:
+#       batch_size: 128
+#       max_new_tokens: 512
+#       temperature: 0.7
+#       top_p: 0.95
+#       top_k: 64
+#     output:
+#       file_prefix: "eval_results"
+
+#   - name: llama3.2-typhoon2-1b-instruct-tagged_non-nmt
+#     model:
+#       id: "Pongsaky/llama3.2-typhoon2-1b-instruct-tagged_non-nmt"
+#       type: "instruct_model" # "instruct_model", "base_model"
+#       is_phonetic: true
+#       is_adapter: false
+#     data:
+#       test_inputs_file: "./Instruct_Dataset/klon_tagged_valid.json" # Path to the test data
+#       phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+#     inference:
+#       batch_size: 128
+#       max_new_tokens: 512
+#       temperature: 0.7
+#       top_p: 0.5
+#       top_k: 64
+#     output:
+#       file_prefix: "eval_results" # Prefix for the output JSON file
+
+#   - name: llama3.2-typhoon2-1b-instruct-tagged_nmt_syllable_mixed
+#     model:
+#       id: "Pongsaky/llama3.2-typhoon2-1b-instruct-tagged_nmt_syllable_mixed"
+#       type: "instruct_model" # "instruct_model", "base_model"
+#       is_phonetic: true
+#       is_adapter: false
+#     data:
+#       test_inputs_file: "./Instruct_Dataset/klon_tagged_valid.json" # Path to the test data
+#       phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+#     inference:
+#       batch_size: 128
+#       max_new_tokens: 512
+#       temperature: 0.7
+#       top_p: 0.9
+#       top_k: 64
+#     output:
+#       file_prefix: "eval_results" # Prefix for the output JSON file
+
+#   - name: llama3.2-typhoon2-1b-instruct-untagged
+#     model:
+#       id: "Pongsaky/llama3.2-typhoon2-1b-instruct-untagged"
+#       type: "instruct_model" # "instruct_model", "base_model"
+#       is_phonetic: true
+#       is_adapter: false
+#     data:
+#       test_inputs_file: "./Instruct_Dataset/klon_untagged_valid.json" # Path to the test data
+#       phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+#     inference:
+#       batch_size: 128
+#       max_new_tokens: 512
+#       temperature: 0.7
+#       top_p: 0.9
+#       top_k: 64
+#     output:
+#       file_prefix: "eval_results" # Prefix for the output JSON file
+
+# # Non-Instruct Model
+#   - name: llama3.2-typhoon2-1b-full-training-phonetic
+#     model:
+#       id: "Pongsaky/llama3.2-typhoon2-1b-full-training-phonetic"
+#       type: "base_model" # "instruct_model", "base_model"
+#       is_phonetic: true
+#       is_adapter: false
+#     data:
+#       test_inputs_file: "./dataset/test_inputs_phonetic.json" # Path to the test data
+#       phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+#     inference:
+#       batch_size: 256
+#       max_new_tokens: 512
+#       temperature: 0.7
+#       top_p: 0.9
+#       top_k: 64
+#     output:
+#       file_prefix: "eval_results"
+
+#   - name: llama3.2-typhoon2-1b-full-training-no-phonetic
+#     model:
+#       id: "Pongsaky/llama3.2-typhoon2-1b-full-training-no-phonetic"
+#       type: "base_model" # "instruct_model", "base_model"
+#       is_phonetic: true
+#       is_adapter: false
+#     data:
+#       test_inputs_file: "./dataset/test_inputs.json" # Path to the test data
+#       phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+#     inference:
+#       batch_size: 256
+#       max_new_tokens: 512
+#       temperature: 0.7
+#       top_p: 0.9
+#       top_k: 64
+#     output:
+#       file_prefix: "eval_results"
+    
+#   - name: llama3.2-typhoon2-1b-no-phonetic-adding
+#     model:
+#       id: "Pongsaky/llama3.2-typhoon2-1b-no-phonetic-adding"
+#       type: "base_model" # "instruct_model", "base_model"
+#       is_phonetic: true
+#       is_adapter: false
+#     data:
+#       test_inputs_file: "./dataset/test_inputs_phonetic.json" # Path to the test data
+#       phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+#     inference:
+#       batch_size: 256
+#       max_new_tokens: 512
+#       temperature: 0.7
+#       top_p: 0.9
+#       top_k: 64
+#     output:
+#       file_prefix: "eval_results"
+
+    # LORA Series
+  - name: llama3.2-typhoon2-1b-lora-unfreeze-embedding-phonetic
     model:
-      id: "Pongsaky/llama3.2-typhoon2-1b-instruct-tagged_nmt_syllable_mixed"
-      type: "instruct_model" # "instruct_model", "base_model"
+      id: "Pongsaky/llama3.2-typhoon2-1b-lora-unfreeze-embedding-phonetic"
+      base_model_id: "scb10x/llama3.2-typhoon2-1"
+      type: "base_model" # "instruct_model", "base_model"
       is_phonetic: true
-      is_adapter: false
+      is_adapter: true
     data:
-      test_inputs_file: "./Instruct_Dataset/klon_tagged_valid.json" # Path to the test data
+      test_inputs_file: "./dataset/test_inputs_phonetic.json" # Path to the test data
       phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
     inference:
-      batch_size: 2
+      batch_size: 256
       max_new_tokens: 512
-      temperature: 0.9
-      top_p: 0.95
+      temperature: 0.7
+      top_p: 0.9
       top_k: 64
     output:
-      file_prefix: "eval_results" # Prefix for the output JSON file (e.g., eval_results_llama3.2-typhoon2-1b-instruct-tagged_nmt-mixed-eval.json)
+      file_prefix: "eval_results"
 
-  # - name: gemma-3-4b-it-unsloth-bnb-4bit-phonetic-fine-tuned-eval
-  #   model:
-  #     id: "Pongsaky/gemma-3-4b-it-unsloth-bnb-4bit-phonetic-fine-tuned"
-  #     type: "base_model" # "instruct_model", "base_model"
-  #     is_phonetic: true
-  #     is_adapter: false
-  #   data:
-  #     test_inputs_file: "./dataset/test_inputs_phonetic.json" # Path to the test data
-  #     phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
-  #   inference:
-  #     batch_size: 2
-  #     max_new_tokens: 512
-  #     temperature: 0.9
-  #     top_p: 0.9
-  #     top_k: 64
-  #   output:
-  #     file_prefix: "eval_results" # Prefix for the output JSON file
+  - name: llama-3.1-7b-typhoon-2-phonetic-unfreeze-embedding
+    model:
+      id: "Pongsaky/llama-3.1-7b-typhoon-2-phonetic-unfreeze-embedding"
+      base_model_id: ""
+      type: "base_model" # "instruct_model", "base_model"
+      is_phonetic: true
+      is_adapter: true
+    data:
+      test_inputs_file: "./dataset/test_inputs_phonetic.json" # Path to the test data
+      phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+    inference:
+      batch_size: 64
+      max_new_tokens: 512
+      temperature: 0.7
+      top_p: 0.9
+      top_k: 64
+    output:
+      file_prefix: "eval_results"
 
-  # - name: llama3.2-typhoon2-1b-lora-unfreeze-embedding-phonetic-eval
-  #   model:
-  #     id: "Pongsaky/llama3.2-typhoon2-1b-lora-unfreeze-embedding-phonetic" # Adapter ID
-  #     base_model_id: "scb10x/llama3.2-typhoon2-1b" # Base model ID
-  #     type: "base_model" # "instruct_model", "base_model"
-  #     is_phonetic: true
-  #     is_adapter: true
-  #   data:
-  #     test_inputs_file: "./dataset/test_inputs_phonetic.json" # Path to the test data
-  #     phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
-  #   inference:
-  #     batch_size: 2
-  #     max_new_tokens: 512
-  #     temperature: 0.9
-  #     top_p: 0.9
-  #     top_k: 64
-  #   output:
-  #     file_prefix: "eval_results" # Prefix for the output JSON file
+  - name: gemma-3-4b-it-unsloth-bnb-4bit-phonetic-with-token-added-1-epoches-v2
+    model:
+      id: "Pongsaky/gemma-3-4b-it-unsloth-bnb-4bit-phonetic-with-token-added-1-epoches-v2"
+      base_model_id: ""
+      type: "base_model" # "instruct_model", "base_model"
+      is_phonetic: true
+      is_adapter: true
+    data:
+      test_inputs_file: "./dataset/test_inputs_phonetic.json" # Path to the test data
+      phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+    inference:
+      batch_size: 128
+      max_new_tokens: 512
+      temperature: 0.7
+      top_p: 0.9
+      top_k: 64
+    output:
+      file_prefix: "eval_results"
+
+  - name: gemma-3-4b-pt-unsloth-bnb-4bit-phonetic-unfreeze-embedding
+    model:
+      id: "Pongsaky/gemma-3-4b-pt-unsloth-bnb-4bit-phonetic-unfreeze-embedding"
+      base_model_id: ""
+      type: "base_model" # "instruct_model", "base_model"
+      is_phonetic: true
+      is_adapter: true
+    data:
+      test_inputs_file: "./dataset/test_inputs_phonetic.json" # Path to the test data
+      phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+    inference:
+      batch_size: 128
+      max_new_tokens: 512
+      temperature: 0.7
+      top_p: 0.9
+      top_k: 64
+    output:
+      file_prefix: "eval_results"

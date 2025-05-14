@@ -126,9 +126,44 @@ def sumpass_score(bot_VowMat,bot_th): # bot_VowMat = ['a', 'xxN', 'oot', '@@t']
 def get_n_stanza(text: str, n: int):
     n_line = n * 2 * 2
 
-    splited_text = text.split("\t")
-    if len(splited_text) >= n_line:
-        splited_text = splited_text[:n_line]
-    elif len(splited_text) < n_line:
-        raise ValueError("The text must contain at least {} lines.".format(n_line))
-    return "\t".join(splited_text)
+    try:
+        splited_text = text.split("\t")
+        if len(splited_text) >= n_line:
+            splited_text = splited_text[:n_line+1]
+        elif len(splited_text) < n_line:
+            raise ValueError("The text must contain at least {} lines.".format(n_line))
+        return "\t".join(splited_text)
+    except Exception as e:
+        print(f"{text} is return full content")
+        return text
+
+def detect_non_thai_content(text):
+    tokens = [
+        "\n", "\t", "[0]", "[1]", "[2]", "[3]", "[4]", "[?]", "[@@-]", "[@@]",
+        "[@]", "[N]", "[OO-]", "[OO]", "[O]", "[UU]", "[UUa]", "[Ua]", "[U]",
+        "[a-]", "[a]", "[aa]", "[aee]", "[b]", "[bl]", "[br]", "[c]", "[ch]",
+        "[d]", "[dr]", "[e]", "[ee]", "[f]", "[fl]", "[fr]", "[h]", "[i]",
+        "[ia]", "[ii-]", "[ii]", "[iia]", "[j]", "[k]", "[kh]", "[khl]", "[khr]",
+        "[khw]", "[kl]", "[kr]", "[kw]", "[l]", "[m]", "[n]", "[o]", "[oo]",
+        "[p]", "[ph]", "[phl]", "[phr]", "[pl]", "[pr]", "[r]", "[s]", "[sw]",
+        "[t]", "[th]", "[thr]", "[tr]", "[u]", "[ua]", "[uu-]", "[uu]", "[uua]",
+        "[w]", "[x]", "[xx-]", "[xx]", "<klon8>", "<r>", "</r>"
+    ]
+    thai_and_whitespace_pattern = set(chr(i)
+                                      for i in range(0x0E00, 0x0E7F + 1))
+    thai_and_whitespace_pattern.update({'\n', '\t', ' '})
+
+    i = 0
+    while i < len(text):
+        if text[i] in thai_and_whitespace_pattern:
+            i += 1
+            continue
+        token_match = False
+        for token in tokens:
+            if text.startswith(token, i):
+                i += len(token)
+                token_match = True
+                break
+        if not token_match:
+            return True
+    return False
