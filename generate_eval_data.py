@@ -1,4 +1,3 @@
-import unsloth
 import yaml
 import os
 import torch
@@ -6,12 +5,8 @@ import json
 import gc
 from utils.file_utils import get_data_from_json
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from peft import PeftModel
-from utils import word_check, llm_utils
-from train import add_new_tokens
+from utils import word_check
 from tqdm import tqdm
-
-os.environ["UNSLOTH_IS_PRESENT"] = "1"
 
 # --- Helper Functions --
 upper_vowel = ["่", "้", "๊", "๋", "็", "ิ", "ี", "ึ", "ื", "ุ", "ู", "์", "ั"]
@@ -144,8 +139,6 @@ if __name__ == "__main__":
         model_id: str = model_config.get("id")
         base_model_id = model_config.get("base_model_id")
         model_type = model_config.get("type")
-        is_phonetic = model_config.get("is_phonetic", False)
-        is_adapter = model_config.get("is_adapter", False)
 
         data_config = run_config.get("data", {})
         test_inputs_file = data_config.get("test_inputs_file")
@@ -162,45 +155,19 @@ if __name__ == "__main__":
             continue
 
         try:
-            print(f"Loading tokenizer for: {model_id if not is_adapter else base_model_id}")
-            tokenizer_load_id = base_model_id if is_adapter else model_id
-            if is_adapter:
-                base_model, tokenizer = unsloth.FastLanguageModel.from_pretrained(
-                    model_name=base_model_id,
-                    max_seq_length=1024,
-                    dtype=None,
-                    token="hf"
-                )
-            else:
-                tokenizer = AutoTokenizer.from_pretrained(tokenizer_load_id)
-
-            # Adding tokens for LoRA
-            if is_adapter and is_phonetic and phonetic_token_file:
-                phonetic_tokens = get_data_from_json(phonetic_token_file)
-                family_model = "llama" if model_id.find("llama") else "gemma"
-                training_data = get_data_from_json("./dataset/training_data.json")
-                tag_dict = llm_utils.extract_phonetic_combinations(training_data=training_data, tokenizer=tokenizer, model_type=family_model)
-                add_new_tokens(base_model, tokenizer, new_tokens=phonetic_tokens,
-                               model_type=family_model, tag_dict=tag_dict)
+            print(f"Loading tokenizer for: {model_id}")
+            tokenizer = AutoTokenizer.from_pretrained(model_id)
 
             if tokenizer.pad_token is None:
                 tokenizer.pad_token = tokenizer.eos_token
                 print("Set pad_token to eos_token as it was None.")
 
             print(f"Loading model: {model_id}")
-            if is_adapter:
-                if not base_model_id:
-                    print(f"Skipping adapter run '{run_name}' as base_model_id is not specified.")
-                    continue
-                model = PeftModel.from_pretrained(base_model, model_id)
-                unsloth.FastLanguageModel.for_inference(model)
-                print(f"Loaded adapter '{model_id}' on base '{base_model_id}' and merged.")
-            else:
-                model = AutoModelForCausalLM.from_pretrained(
-                    model_id,
-                    torch_dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16,
-                    device_map="auto"
-                )
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                torch_dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16,
+                device_map="auto"
+            )
             
             model.eval() # Set model to evaluation mode
 
