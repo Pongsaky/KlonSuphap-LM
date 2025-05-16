@@ -1,22 +1,22 @@
 evaluation_runs:
 # Instruct model
-  - name: llama3.2-typhoon2-1b-instruct-tagged_nmt-mixed
-    model:
-      id: "Pongsaky/llama3.2-typhoon2-1b-instruct-tagged_nmt-mixed"
-      type: "instruct_model" # "instruct_model", "base_model"
-      is_phonetic: true
-      is_adapter: false
-    data:
-      test_inputs_file: "./Instruct_Dataset/klon_tagged_valid.json" # Path to the test data
-      phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
-    inference:
-      batch_size: 256
-      max_new_tokens: 512
-      temperature: 0.7
-      top_p: 0.95
-      top_k: 64
-    output:
-      file_prefix: "eval_results"
+  # - name: llama3.2-typhoon2-1b-instruct-tagged_nmt-mixed
+  #   model:
+  #     id: "Pongsaky/llama3.2-typhoon2-1b-instruct-tagged_nmt-mixed"
+  #     type: "instruct_model" # "instruct_model", "base_model"
+  #     is_phonetic: true
+  #     is_adapter: false
+  #   data:
+  #     test_inputs_file: "./Instruct_Dataset/klon_tagged_valid.json" # Path to the test data
+  #     phonetic_token_file: "./dataset/phonetic_token.json" # Needed for models that added phonetic tokens
+  #   inference:
+  #     batch_size: 256
+  #     max_new_tokens: 512
+  #     temperature: 0.7
+  #     top_p: 0.95
+  #     top_k: 64
+  #   output:
+  #     file_prefix: "eval_results"
 
     # LORA Series
   - name: llama3.2-typhoon2-1b-instruct-lora-klon8-nmt

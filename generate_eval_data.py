@@ -45,18 +45,23 @@ def generate_response(model, tokenizer, messages: list, model_type: str, inferen
     """Generates a response from the model."""
     if model_type == "instruct_model":
         # For instruct models, messages are expected to be a list of conversation dicts
-        input_ids = tokenizer.apply_chat_template(
+        model_inputs = tokenizer.apply_chat_template(
             messages,
             add_generation_prompt=True,
             padding=True,
             return_tensors="pt"
         ).to(model.device)
         
+        # Create attention mask (1 for real tokens, 0 for padding)
+        attention_mask = (model_inputs != tokenizer.pad_token_id).long().to(model.device)
+        
         with torch.no_grad():
             outputs = model.generate(
-                input_ids,
+                model_inputs,
+                attention_mask=attention_mask,
                 max_new_tokens=inference_params.get("max_new_tokens", 512),
                 eos_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.pad_token_id,
                 do_sample=True,
                 temperature=inference_params.get("temperature", 0.9),
                 top_p=inference_params.get("top_p", 0.9),
@@ -95,7 +100,7 @@ def generate_response(model, tokenizer, messages: list, model_type: str, inferen
 
     elif model_type == "base_model":
         # For base models, messages are expected to be a list of prompt strings
-        inputs = tokenizer(
+        model_inputs = tokenizer(
             messages,
             return_tensors="pt",
             padding=True,
@@ -103,13 +108,15 @@ def generate_response(model, tokenizer, messages: list, model_type: str, inferen
         
         with torch.no_grad():
             outputs = model.generate(
-                **inputs,
+                input_ids=model_inputs.input_ids,
+                attention_mask=model_inputs.attention_mask,  # Explicitly pass attention mask
                 max_new_tokens=inference_params.get("max_new_tokens", 512),
                 temperature=inference_params.get("temperature", 0.9),
                 top_p=inference_params.get("top_p", 0.9),
                 top_k=inference_params.get("top_k", 64),
                 do_sample=True,
                 eos_token_id=tokenizer.eos_token_id,
+                pad_token_id=tokenizer.pad_token_id
             )
         
         # For base models, the output is the continuation of the prompt
@@ -128,13 +135,12 @@ if __name__ == "__main__":
     if not os.path.exists("eval_results"):
         os.makedirs("eval_results")
 
-    with open("eval_config.yaml", "r", encoding="utf-8") as f:
+    with open("eval_intern_config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
 
     for run_config in tqdm(config.get("evaluation_runs", []), desc="Overall Evaluation Progress"):
         run_name = run_config.get("name", "unnamed_eval_run")
         print(f"\n--- Starting Evaluation Run: {run_name} ---")
-
         model_config = run_config.get("model", {})
         model_id: str = model_config.get("id")
         base_model_id = model_config.get("base_model_id")
@@ -158,14 +164,21 @@ if __name__ == "__main__":
             print(f"Loading tokenizer for: {model_id}")
             tokenizer = AutoTokenizer.from_pretrained(model_id)
 
+            # Properly handle padding tokens
             if tokenizer.pad_token is None:
-                tokenizer.pad_token = tokenizer.eos_token
-                print("Set pad_token to eos_token as it was None.")
+                # Try to set a different token as pad_token instead of using eos_token
+                if tokenizer.unk_token is not None:
+                    tokenizer.pad_token = tokenizer.unk_token
+                    print("Set pad_token to unk_token as pad_token was None.")
+                else:
+                    # Fallback to eos_token if no better alternative
+                    tokenizer.pad_token = tokenizer.eos_token
+                    print("Set pad_token to eos_token as it was None and no unk_token available.")
 
             print(f"Loading model: {model_id}")
             model = AutoModelForCausalLM.from_pretrained(
                 model_id,
-                torch_dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16,
+                # torch_dtype=torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16,
                 device_map="auto"
             )
             
@@ -277,6 +290,7 @@ if __name__ == "__main__":
                         print("Generated Output:")
                         print_poem_formatted(gen_text)
                         print(f"Raw conversation prompt: {batch_messages_for_model[i]}")
+                        print(f"Gen Text: {gen_text}")
                         new_batch_prompts_raw.append(batch_prompts_raw[i])
                         continue
                 
